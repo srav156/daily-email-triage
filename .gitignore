@@ -1,0 +1,12 @@
+.DS_Store
+
+# Claude Code local session state -- never publish this.
+.claude/.credentials.json
+.claude/.last-cleanup
+.claude/.last-update-result.json
+.claude/backups/
+.claude/cache/
+.claude/history.jsonl
+.claude/plugins/
+.claude/projects/
+.claude/settings.json
