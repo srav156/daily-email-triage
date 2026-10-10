@@ -2,7 +2,7 @@
 
 A multi-agent, multi-skill email workflow built entirely as Claude Code subagents and a slash command — no standalone application code. It triages your Gmail inbox, drafts replies for anything that actually needs one, checks your real calendar availability for scheduling requests, and — only when a specific time gets firmly confirmed in a reply — blocks that time on your calendar. It never sends, deletes, or modifies anything that already exists; the only mutating actions anywhere in this workflow are creating a Gmail draft and creating a private calendar hold.
 
-There's also a separate Python port of this same workflow (`Gmail-Multi-Agent`, not included in this repo) that trades this version's zero-setup live simplicity for a real, testable, deterministic-by-default code structure. This project is the original: it runs live today, with no dependencies to install and no API key to manage, entirely inside a Claude Code session.
+There's also a separate Python port of this same workflow (`Gmail-Multi-Agent`, not included in this repo) that trades this version's zero-setup live simplicity for a real, testable, deterministic-by-default code structure. This project is the original. In its base setup it runs live today inside a Claude Code session, with no dependencies to install and no API key to manage. It has also been run outside Claude Code, in a persistent agent (Hermes) and in n8n; those setups need extra configuration, such as an Anthropic API key for Hermes. See [Deployment phases](#deployment-phases).
 
 ## What "agent" means here
 
@@ -44,7 +44,7 @@ claude -p 'daily-email-triage'
 claude -p 'daily-email-triage 5'   # cap at 5 emails
 ```
 
-Requires the "claude.ai Gmail" and "claude.ai Google Calendar" MCP connectors already authorized for your account (OAuth-based, one-time setup) — no separate API key, no `pip install`, nothing to configure beyond that.
+Requires the "claude.ai Gmail" and "claude.ai Google Calendar" MCP connectors already authorized for your account (OAuth-based, one-time setup). For this local Claude Code setup there is no separate API key, no `pip install`, and nothing to configure beyond that. Running it elsewhere (Hermes, n8n) needs more setup; see [Deployment phases](#deployment-phases).
 
 ## Deployment phases
 
@@ -52,7 +52,7 @@ Beyond running locally in Claude Code, this pipeline was also run in two other e
 
 ### Phase 1: Hermes Agent + Telegram
 
-[Hermes Agent](https://github.com/NousResearch/hermes-agent) (an open-source agent by Nous Research) is a separate program from Claude Code. It runs persistently and can push messages on its own, which Claude Code can't do unattended.
+Hermes Agent (an open-source agent by Nous Research) is a separate program from Claude Code. It runs persistently and can push messages on its own, which Claude Code can't do unattended.
 
 - **Backend model:** Hermes used a Claude model through an Anthropic API key from [console.anthropic.com](https://console.anthropic.com). An Anthropic OAuth connection conflicted with the API key and was removed.
 - **Telegram gateway:** a bot token is added to the Hermes config. Cron output also needs a **Home Channel ID** (your Telegram user ID). Without it, delivery fails silently.
