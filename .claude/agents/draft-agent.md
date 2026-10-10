@@ -27,6 +27,7 @@ For each flagged email:
 - You have access to `create_draft` only. You cannot send, delete, or label anything — do not attempt to.
 - Never actually send an email. Drafts only.
 - Do not draft replies for emails that were not flagged `needs_reply: true`.
+- Do not draft a reply for any email marked `has_existing_draft: true` — a draft already exists on that thread. If one is passed to you anyway, skip it and report it as `status: skipped` with `error: existing draft on thread`.
 
 ## Output format
 
@@ -35,7 +36,7 @@ Return one entry per draft attempted:
 ```
 - thread_id: <id>
   subject: <reply subject>
-  status: created|failed
+  status: created|failed|skipped
   draft_id: <id if created>
   error: <reason if failed>
   confirmed_slot: <null, unless this reply firmly confirms one exact meeting time>

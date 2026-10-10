@@ -1,12 +1,14 @@
+# macOS
 .DS_Store
+**/.DS_Store
 
-# Claude Code local session state -- never publish this.
-.claude/.credentials.json
-.claude/.last-cleanup
-.claude/.last-update-result.json
-.claude/backups/
-.claude/cache/
-.claude/history.jsonl
-.claude/plugins/
-.claude/projects/
-.claude/settings.json
+# Claude Code: track only the workflow definitions (agents + commands).
+# Everything else under .claude/ is local session state, credentials,
+# settings, caches, or plugin files -- never publish it.
+.claude/*
+!.claude/agents/
+!.claude/commands/
+
+# Secrets / env
+.env
+.env.*
