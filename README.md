@@ -46,6 +46,46 @@ claude -p 'daily-email-triage 5'   # cap at 5 emails
 
 Requires the "claude.ai Gmail" and "claude.ai Google Calendar" MCP connectors already authorized for your account (OAuth-based, one-time setup) — no separate API key, no `pip install`, nothing to configure beyond that.
 
+## Deployment phases
+
+Beyond running locally in Claude Code, this pipeline was also run in two other environments. The core constraints stayed the same in both: Gmail is draft-only and nothing is ever sent.
+
+### Phase 1: Hermes Agent + Telegram
+
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) (an open-source agent by Nous Research) is a separate program from Claude Code. It runs persistently and can push messages on its own, which Claude Code can't do unattended.
+
+- **Backend model:** Hermes used a Claude model through an Anthropic API key from [console.anthropic.com](https://console.anthropic.com). An Anthropic OAuth connection conflicted with the API key and was removed.
+- **Telegram gateway:** a bot token is added to the Hermes config. Cron output also needs a **Home Channel ID** (your Telegram user ID). Without it, delivery fails silently.
+- **Gmail and Calendar:** Hermes can't use the Claude.ai-hosted connectors, so it needs its own Gmail and Calendar MCP authorization.
+- **Agent definitions:** Hermes doesn't read `.claude/agents/*.md`, so the agents were recreated in Hermes's own format with the same constraints (draft-only Gmail, no sending).
+- **Result:** scheduled triage with the summary delivered to Telegram, plus a confirmed two-way conversational flow.
+
+### Phase 2: Self-hosted n8n + Slack
+
+- **Container:** n8n ran in Docker on Apple Silicon, with a persistent volume. A custom image (n8n base plus the Claude Code CLI) mounts the `.claude` folder into the container.
+- **Public HTTPS:** ngrok gives n8n a public HTTPS domain. This is required because Slack OAuth rejects `localhost` redirect URIs.
+- **Credentials:** Google OAuth2 (Gmail, Calendar, Sheets, Drive, Docs), Slack and Notion.
+- **Workflow:** Slack Trigger → Filter (trigger phrase) → Code node running `claude -p "/daily-email-triage"` → Slack node posting the triage report back to the channel.
+- **Schedule trigger:** an optional Schedule Trigger (every 15 minutes) was added in parallel, then deactivated.
+
+#### Problems solved
+
+- **Headless MCP failure.** `claude -p` couldn't reach the Claude.ai Gmail and Calendar connectors when `CLAUDE_CODE_OAUTH_TOKEN` was set, because that variable forces a scope-limited auth mode. The fix is to unset it for the call:
+  ```
+  env -u CLAUDE_CODE_OAUTH_TOKEN claude -p "/daily-email-triage"
+  ```
+  This uses the interactive OAuth login stored in the mounted `~/.claude`. A live run confirmed it: 21 real emails fetched and triaged, and a real draft created.
+- **Slack Socket Mode** silently overrides the Event Subscriptions Request URL. Disable it.
+- **Missing Execute Command node.** It wasn't available in this n8n build. A Code node using `child_process.exec` replaced it.
+- **Code node sandbox.** It blocked `child_process`. Setting `NODE_FUNCTION_ALLOW_BUILTIN=child_process` on the container fixed it.
+- **Slack Trigger only fires when the workflow is Published.** There is a test vs. production webhook mismatch, so test with real Slack messages rather than "Execute step".
+- **Two Slack credentials.** The Slack Trigger needs a "Slack API" credential (bot token plus signing secret), separate from the OAuth2 credential used by the Slack action node.
+
+#### Safety notes
+
+- Draft-only: the pipeline never sends email.
+- Never commit `CLAUDE_CODE_OAUTH_TOKEN`, API keys, bot tokens or your ngrok domain. Use placeholders in anything you publish.
+
 ## Duplicate-draft protection
 
 Gmail search excludes drafts, so a thread that only has a draft reply would look unanswered on a re-run. To prevent duplicate drafts, fetch-agent also has read-only `list_drafts` access: once per run it collects the thread IDs that already have a draft and tags each email with `has_existing_draft`. The command then skips those emails for the calendar, draft, and calendar-block steps, and draft-agent refuses them as a backstop. Skipped threads are listed in the final report.
